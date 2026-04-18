@@ -36,7 +36,7 @@ jobs:
         run: python -m playwright install --with-deps chromium
 
       - name: Run lead scraper
-        run: python scraper/fetch.py
+        run: python fetch.py
         env:
           PYTHONUNBUFFERED: "1"
 
@@ -44,7 +44,7 @@ jobs:
         run: |
           git config user.name  "GitHub Actions"
           git config user.email "actions@github.com"
-          git add data/leads.json dashboard/leads.json exports/ghl.csv
+          git add leads.json ghl.csv index.html
           git diff --cached --quiet || git commit -m "chore: update leads $(date -u '+%Y-%m-%d %H:%M UTC')"
           git push
 
@@ -66,7 +66,7 @@ jobs:
       - name: Upload dashboard artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: dashboard/
+          path: ./
 
       - name: Deploy to GitHub Pages
         id: deployment
