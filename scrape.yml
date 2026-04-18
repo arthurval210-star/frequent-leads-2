@@ -46,7 +46,6 @@ jobs:
 
       - name: Show scrape summary
         run: |
-          echo "=== LEADS SUMMARY ==="
           python -c "
           import json
           with open('data/leads.json') as f:
@@ -56,10 +55,11 @@ jobs:
           print(f'Fetched at: {d[\"fetched_at\"]}')
           "
 
-      - name: Commit and push updated records
+      - name: Commit updated data
         run: |
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
+          git pull --rebase origin main
           git add data/leads.json dashboard/leads.json exports/ghl.csv
           git diff --cached --quiet || git commit -m "update leads $(date -u '+%Y-%m-%d %H:%M UTC')"
           git push
