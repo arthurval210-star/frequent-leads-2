@@ -1,4 +1,4 @@
-name: Daily Lead Scrape — San Antonio
+name: Daily Lead Scrape San Antonio
 
 on:
   schedule:
