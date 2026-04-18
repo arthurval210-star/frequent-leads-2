@@ -39,8 +39,8 @@ jobs:
         run: mkdir -p data dashboard exports
 
       - name: Run scraper
-        run: python src/fetch.py
-        env:
+       run: python src/fetch.py
+       env:
           PYTHONUNBUFFERED: "1"
 
       - name: Commit updated data
