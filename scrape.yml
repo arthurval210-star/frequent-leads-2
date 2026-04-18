@@ -1,9 +1,9 @@
-name: Daily Lead Scrape — San Antonio
+name: Daily Lead Scrape San Antonio
 
-on:
+"on":
   schedule:
-    - cron: "0 8 * * *"   # 8 AM UTC daily (3 AM CT)
-  workflow_dispatch:       # manual trigger
+    - cron: "0 8 * * *"
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -35,17 +35,33 @@ jobs:
       - name: Install Playwright browsers
         run: python -m playwright install --with-deps chromium
 
-      - name: Run lead scraper
-        run: python scraper/fetch.py
+      - name: Create output directories
+        run: |
+          mkdir -p data dashboard exports
+
+      - name: Run scraper
+        run: python fetch.py
         env:
           PYTHONUNBUFFERED: "1"
 
-      - name: Commit updated data
+      - name: Show scrape summary
         run: |
-          git config user.name  "GitHub Actions"
+          echo "=== LEADS SUMMARY ==="
+          python -c "
+          import json
+          with open('data/leads.json') as f:
+              d = json.load(f)
+          print(f'Total scraped: {d[\"total\"]}')
+          print(f'Qualified leads: {d[\"qualified\"]}')
+          print(f'Fetched at: {d[\"fetched_at\"]}')
+          "
+
+      - name: Commit and push updated records
+        run: |
+          git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
           git add data/leads.json dashboard/leads.json exports/ghl.csv
-          git diff --cached --quiet || git commit -m "chore: update leads $(date -u '+%Y-%m-%d %H:%M UTC')"
+          git diff --cached --quiet || git commit -m "update leads $(date -u '+%Y-%m-%d %H:%M UTC')"
           git push
 
   deploy-pages:
