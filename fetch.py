@@ -29,7 +29,7 @@ logging.basicConfig(
 log = logging.getLogger("lead_gen")
 
 # ── Config ────────────────────────────────────────────────────────────────────
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "data"
 DASHBOARD_DIR = BASE_DIR / "dashboard"
 EXPORTS_DIR = BASE_DIR / "exports"
@@ -38,7 +38,6 @@ for d in [DATA_DIR, DASHBOARD_DIR, EXPORTS_DIR]:
     d.mkdir(parents=True, exist_ok=True)
 
 LOCATION = "San Antonio, TX"
-LOCATION_QUERY = "San Antonio Texas"
 
 SEARCH_CATEGORIES = [
     "roofing contractor",
@@ -63,7 +62,7 @@ HEADERS = {
 }
 
 RETRY_ATTEMPTS = 3
-RETRY_DELAY = 2  # seconds
+RETRY_DELAY = 2
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -120,7 +119,6 @@ def audit_website(url: str) -> dict:
     if not url:
         return audit
 
-    # ensure scheme
     if not url.startswith("http"):
         url = "https://" + url
 
@@ -141,7 +139,6 @@ def audit_website(url: str) -> dict:
         html = r.text
         soup = BeautifulSoup(html, "lxml")
 
-        # Meta checks
         title = soup.find("title")
         audit["has_title"] = bool(title and title.text.strip())
 
@@ -156,7 +153,6 @@ def audit_website(url: str) -> dict:
         og = soup.find("meta", property="og:title")
         audit["og_tags"] = bool(og)
 
-        # Tracking pixels
         html_lower = html.lower()
         audit["has_google_analytics"] = (
             "google-analytics.com" in html_lower
@@ -169,11 +165,9 @@ def audit_website(url: str) -> dict:
         )
         audit["has_gtm"] = "googletagmanager.com" in html_lower
 
-        # Mobile viewport
         viewport = soup.find("meta", attrs={"name": "viewport"})
         audit["mobile_friendly"] = bool(viewport)
 
-        # CMS detection
         if "wp-content" in html or "wp-includes" in html:
             audit["cms"] = "WordPress"
         elif "shopify" in html_lower:
@@ -184,10 +178,6 @@ def audit_website(url: str) -> dict:
             audit["cms"] = "Wix"
         elif "webflow" in html_lower:
             audit["cms"] = "Webflow"
-        elif "joomla" in html_lower:
-            audit["cms"] = "Joomla"
-        elif "drupal" in html_lower:
-            audit["cms"] = "Drupal"
 
     except Exception as e:
         log.debug(f"Website audit failed for {url}: {e}")
@@ -196,16 +186,14 @@ def audit_website(url: str) -> dict:
 
 # ── Lead Scoring ──────────────────────────────────────────────────────────────
 
-def score_lead(business: dict, audit: dict) -> tuple[int, list[str]]:
+def score_lead(business: dict, audit: dict) -> tuple:
     score = 30
     flags = []
 
-    # No website
     if not business.get("website"):
         score += 15
         flags.append("No website")
     else:
-        # Poor website performance
         if audit.get("load_time_ms") and audit["load_time_ms"] > 3000:
             score += 5
             flags.append("Slow website")
@@ -219,7 +207,6 @@ def score_lead(business: dict, audit: dict) -> tuple[int, list[str]]:
             score += 5
             flags.append("Poor SEO on-page")
 
-    # Reviews
     review_count = business.get("review_count", 0) or 0
     rating = business.get("rating", 5.0) or 5.0
 
@@ -231,12 +218,10 @@ def score_lead(business: dict, audit: dict) -> tuple[int, list[str]]:
         score += 10
         flags.append("Low rating")
 
-    # Ads
     if not business.get("ads_presence"):
         score += 15
         flags.append("No ads detected")
 
-    # SEO signals
     seo_issues = 0
     if not audit.get("has_h1"):
         seo_issues += 1
@@ -248,19 +233,14 @@ def score_lead(business: dict, audit: dict) -> tuple[int, list[str]]:
         score += 10
         flags.append("Weak SEO signals")
 
-    # High competition niche
     high_comp = ["roofing", "hvac", "plumbing", "law"]
     if any(c in (business.get("category") or "").lower() for c in high_comp):
         flags.append("High competition niche")
 
-    if not business.get("website"):
-        flags.append("Outdated/Missing web presence")
-
     return min(score, 100), flags
 
-# ── Auto-generated Notes ──────────────────────────────────────────────────────
 
-def generate_notes(business: dict, flags: list[str]) -> str:
+def generate_notes(business: dict, flags: list) -> str:
     notes = []
     name = business.get("business_name", "This business")
 
@@ -269,11 +249,11 @@ def generate_notes(business: dict, flags: list[str]) -> str:
     if "Low reviews" in flags:
         notes.append("Fewer than 50 reviews signals low online visibility and trust.")
     if "Low rating" in flags:
-        notes.append(f"Rating below 4.2 ({business.get('rating')}) hurts conversions — reputation mgmt needed.")
+        notes.append(f"Rating below 4.2 ({business.get('rating')}) hurts conversions.")
     if "No ads detected" in flags:
-        notes.append("No paid ad presence means competitors are capturing all paid search traffic.")
+        notes.append("No paid ad presence — competitors capture all paid search traffic.")
     if "Poor SEO on-page" in flags:
-        notes.append("Missing meta tags and SEO structure — invisible to Google organic results.")
+        notes.append("Missing meta tags — invisible to Google organic results.")
     if "Not mobile-friendly" in flags:
         notes.append("Site not mobile-optimized — 60%+ of local searches are on mobile.")
     if "No tracking pixels" in flags:
@@ -281,79 +261,9 @@ def generate_notes(business: dict, flags: list[str]) -> str:
 
     return " | ".join(notes) if notes else "Identified as a digital marketing opportunity in San Antonio."
 
-# ── Yelp Scraper ──────────────────────────────────────────────────────────────
+# ── YellowPages Scraper ───────────────────────────────────────────────────────
 
-def scrape_yelp(category: str, location: str = "San Antonio, TX") -> list[dict]:
-    businesses = []
-    query = quote_plus(category)
-    loc = quote_plus(location)
-    url = f"https://www.yelp.com/search?find_desc={query}&find_loc={loc}&sortby=rating"
-
-    log.info(f"[Yelp] Searching: {category}")
-    r = retry_get(url)
-    if not r:
-        return businesses
-
-    soup = BeautifulSoup(r.text, "lxml")
-
-    # Yelp embeds data in JSON script tags
-    scripts = soup.find_all("script", type="application/ld+json")
-    for script in scripts:
-        try:
-            data = json.loads(script.string or "{}")
-            if isinstance(data, list):
-                items = data
-            elif data.get("@type") == "ItemList":
-                items = data.get("itemListElement", [])
-            else:
-                continue
-
-            for item in items:
-                biz = item.get("item", item)
-                if not isinstance(biz, dict):
-                    continue
-                name = biz.get("name", "")
-                if not name:
-                    continue
-
-                addr = biz.get("address", {})
-                rating_data = biz.get("aggregateRating", {})
-
-                phone_raw = biz.get("telephone", "")
-                website = biz.get("url", "")
-                # strip yelp redirect
-                if "yelp.com/biz_redir" in website:
-                    website = ""
-
-                businesses.append({
-                    "business_name": name.strip(),
-                    "category": category,
-                    "phone": normalize_phone(phone_raw),
-                    "email": "",
-                    "website": website,
-                    "google_maps_url": "",
-                    "yelp_url": biz.get("@id", ""),
-                    "city": addr.get("addressLocality", "San Antonio"),
-                    "state": addr.get("addressRegion", "TX"),
-                    "zip": normalize_zip(addr.get("postalCode", "")),
-                    "rating": float(rating_data.get("ratingValue", 0) or 0),
-                    "review_count": int(rating_data.get("reviewCount", 0) or 0),
-                    "last_review_date": "",
-                    "social_links": {},
-                    "ads_presence": False,
-                    "source": "Yelp",
-                })
-        except Exception as e:
-            log.debug(f"[Yelp] JSON parse error: {e}")
-
-    # Also try card-based scraping as fallback
-    cards = soup.select("[class*='businessName'], [data-testid='serp-ia-card']")
-    log.info(f"[Yelp] Found {len(businesses)} via JSON-LD for '{category}'")
-    return businesses
-
-# ── Yellow Pages Scraper ──────────────────────────────────────────────────────
-
-def scrape_yellowpages(category: str) -> list[dict]:
+def scrape_yellowpages(category: str) -> list:
     businesses = []
     slug = re.sub(r"\s+", "-", category.lower())
     url = f"https://www.yellowpages.com/san-antonio-tx/{slug}"
@@ -381,7 +291,6 @@ def scrape_yellowpages(category: str) -> list[dict]:
             if website and "yellowpages.com" in website:
                 website = ""
 
-            addr_el = card.select_one(".adr")
             city_el = card.select_one(".locality")
             state_el = card.select_one(".region")
             zip_el = card.select_one(".postal-code")
@@ -400,7 +309,6 @@ def scrape_yellowpages(category: str) -> list[dict]:
                 "email": "",
                 "website": website,
                 "google_maps_url": "",
-                "yelp_url": "",
                 "city": city_el.text.strip() if city_el else "San Antonio",
                 "state": state_el.text.strip() if state_el else "TX",
                 "zip": zip_el.text.strip() if zip_el else "",
@@ -417,149 +325,26 @@ def scrape_yellowpages(category: str) -> list[dict]:
     log.info(f"[YellowPages] Found {len(businesses)} for '{category}'")
     return businesses
 
-# ── Google Maps Scraper (Playwright) ─────────────────────────────────────────
-
-async def scrape_google_maps(category: str, playwright_instance) -> list[dict]:
-    businesses = []
-    query = f"{category} in San Antonio Texas"
-    url = f"https://www.google.com/maps/search/{quote_plus(query)}"
-
-    log.info(f"[Google Maps] Searching: {category}")
-
-    browser = await playwright_instance.chromium.launch(headless=True)
-    context = await browser.new_context(
-        user_agent=HEADERS["User-Agent"],
-        viewport={"width": 1280, "height": 900},
-    )
-    page = await context.new_page()
-
-    try:
-        await page.goto(url, wait_until="domcontentloaded", timeout=30000)
-        await asyncio.sleep(3)
-
-        # scroll results pane to load more
-        for _ in range(4):
-            try:
-                pane = page.locator('[role="feed"]')
-                await pane.evaluate("el => el.scrollTop += 1200")
-                await asyncio.sleep(1.5)
-            except Exception:
-                break
-
-        cards = await page.query_selector_all('div[role="feed"] > div > div[jsaction]')
-        log.info(f"[Google Maps] {len(cards)} cards found for '{category}'")
-
-        for card in cards[:25]:
-            try:
-                # Click to expand details
-                await card.click()
-                await asyncio.sleep(1.5)
-
-                name_el = await page.query_selector('h1[class*="fontHeadlineLarge"]')
-                name = (await name_el.inner_text()).strip() if name_el else ""
-                if not name:
-                    continue
-
-                # Rating
-                rating = 0.0
-                rating_el = await page.query_selector('span[role="img"][aria-label*="stars"]')
-                if rating_el:
-                    aria = await rating_el.get_attribute("aria-label") or ""
-                    m = re.search(r"([\d.]+)", aria)
-                    if m:
-                        rating = float(m.group(1))
-
-                # Review count
-                review_count = 0
-                review_el = await page.query_selector('button[aria-label*="reviews"]')
-                if review_el:
-                    txt = await review_el.inner_text()
-                    m = re.search(r"([\d,]+)", txt)
-                    if m:
-                        review_count = int(m.group(1).replace(",", ""))
-
-                # Phone
-                phone = ""
-                phone_el = await page.query_selector('button[data-item-id*="phone"]')
-                if phone_el:
-                    phone = normalize_phone(await phone_el.get_attribute("aria-label") or "")
-
-                # Website
-                website = ""
-                web_el = await page.query_selector('a[data-item-id*="authority"]')
-                if web_el:
-                    website = await web_el.get_attribute("href") or ""
-
-                # Address
-                addr = ""
-                addr_el = await page.query_selector('button[data-item-id*="address"]')
-                if addr_el:
-                    addr = (await addr_el.get_attribute("aria-label") or "").replace("Address: ", "")
-
-                zip_code = normalize_zip(addr)
-                maps_url = page.url
-
-                businesses.append({
-                    "business_name": name,
-                    "category": category,
-                    "phone": phone,
-                    "email": "",
-                    "website": website,
-                    "google_maps_url": maps_url,
-                    "yelp_url": "",
-                    "city": "San Antonio",
-                    "state": "TX",
-                    "zip": zip_code,
-                    "rating": rating,
-                    "review_count": review_count,
-                    "last_review_date": "",
-                    "social_links": {},
-                    "ads_presence": False,
-                    "source": "Google Maps",
-                })
-            except PlaywrightTimeout:
-                log.debug(f"[Google Maps] Timeout on a card for '{category}'")
-            except Exception as e:
-                log.debug(f"[Google Maps] Card error: {e}")
-
-    except Exception as e:
-        log.error(f"[Google Maps] Page error for '{category}': {e}")
-    finally:
-        await browser.close()
-
-    log.info(f"[Google Maps] Collected {len(businesses)} for '{category}'")
-    return businesses
-
 # ── Deduplication ─────────────────────────────────────────────────────────────
 
-def deduplicate(leads: list[dict]) -> list[dict]:
+def deduplicate(leads: list) -> list:
     seen = {}
     for lead in leads:
         key = business_key(lead.get("business_name", ""), lead.get("phone", ""))
         if key not in seen:
             seen[key] = lead
         else:
-            # Prefer record with more data
             existing = seen[key]
             if not existing.get("website") and lead.get("website"):
                 seen[key] = lead
-            if not existing.get("phone") and lead.get("phone"):
-                existing["phone"] = lead["phone"]
     return list(seen.values())
 
-# ── Filter + Qualify ──────────────────────────────────────────────────────────
 
 def is_qualified(lead: dict) -> bool:
-    """Only pass businesses that show at least one marketing weakness."""
     rating = lead.get("rating", 5.0) or 5.0
     reviews = lead.get("review_count", 100) or 100
     has_site = bool(lead.get("website", "").strip())
-
-    return (
-        rating < 4.2
-        or reviews < 50
-        or not has_site
-    )
+    return (rating < 4.2 or reviews < 50 or not has_site)
 
 # ── Main Pipeline ─────────────────────────────────────────────────────────────
 
@@ -571,7 +356,7 @@ async def main():
 
     all_businesses = []
 
-    # --- Static scrapers ---
+    # YellowPages scraping
     for cat in SEARCH_CATEGORIES:
         try:
             yp = scrape_yellowpages(cat)
@@ -580,34 +365,12 @@ async def main():
         except Exception as e:
             log.error(f"YellowPages error for '{cat}': {e}")
 
-        try:
-            yelp = scrape_yelp(cat)
-            all_businesses.extend(yelp)
-            time.sleep(1.5)
-        except Exception as e:
-            log.error(f"Yelp error for '{cat}': {e}")
-
-    # --- Dynamic scraper (Google Maps) ---
-    log.info("[Google Maps] Launching Playwright...")
-    try:
-        async with async_playwright() as pw:
-            for cat in SEARCH_CATEGORIES:
-                try:
-                    gm = await scrape_google_maps(cat, pw)
-                    all_businesses.extend(gm)
-                    await asyncio.sleep(2)
-                except Exception as e:
-                    log.error(f"Google Maps error for '{cat}': {e}")
-    except Exception as e:
-        log.error(f"Playwright fatal error: {e}")
-
     log.info(f"Total raw records: {len(all_businesses)}")
 
-    # --- Dedup ---
     unique = deduplicate(all_businesses)
     log.info(f"After deduplication: {len(unique)}")
 
-    # --- Enrich + Score ---
+    # Enrich + Score
     enriched = []
     for i, biz in enumerate(unique):
         log.info(f"[{i+1}/{len(unique)}] Enriching: {biz.get('business_name')}")
@@ -615,7 +378,6 @@ async def main():
             audit = audit_website(biz.get("website", ""))
             biz["website_audit"] = audit
 
-            # Update SEO score (0–100 simple calculation)
             seo_points = sum([
                 audit.get("has_title", False),
                 audit.get("has_meta_description", False),
@@ -634,17 +396,14 @@ async def main():
         except Exception as e:
             log.error(f"Enrichment error for {biz.get('business_name')}: {e}")
 
-    # --- Filter qualified ---
     qualified = [b for b in enriched if is_qualified(b)]
-    # Sort by score desc
     qualified.sort(key=lambda x: x.get("score", 0), reverse=True)
     log.info(f"Qualified leads: {len(qualified)}")
 
-    # --- Build output payload ---
     now = datetime.now(timezone.utc).isoformat()
     payload = {
         "fetched_at": now,
-        "source": "Google Maps, Yelp, YellowPages",
+        "source": "YellowPages",
         "location": LOCATION,
         "total": len(enriched),
         "qualified": len(qualified),
@@ -673,13 +432,13 @@ async def main():
         ],
     }
 
-    # --- Save JSON ---
+    # Save to proper directories
     for path in [DATA_DIR / "leads.json", DASHBOARD_DIR / "leads.json"]:
         with open(path, "w") as f:
             json.dump(payload, f, indent=2)
         log.info(f"Saved: {path}")
 
-    # --- Export CSV for GoHighLevel ---
+    # GHL CSV Export
     csv_path = EXPORTS_DIR / "ghl.csv"
     ghl_fields = [
         "Business Name", "Contact Name", "Phone", "Email", "Website",
