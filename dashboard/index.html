@@ -1,1 +1,1316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SA Lead Engine — San Antonio Leads Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Barlow+Condensed:wght@300;500;700;900&family=Barlow:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0b0d;
+    --surface: #111318;
+    --surface2: #181c24;
+    --border: #1e2535;
+    --accent: #ff4d1c;
+    --accent2: #ffb800;
+    --accent3: #00d4aa;
+    --text: #e8eaf0;
+    --muted: #5a6280;
+    --dim: #2a3050;
+    --red: #ff3b3b;
+    --green: #00d4aa;
+    --yellow: #ffb800;
+    --blue: #4a9eff;
+    --mono: 'Space Mono', monospace;
+    --sans: 'Barlow', sans-serif;
+    --cond: 'Barlow Condensed', sans-serif;
+  }
 
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Grain overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 999;
+    opacity: 0.4;
+  }
+
+  /* Header */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 64px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .logo {
+    font-family: var(--cond);
+    font-weight: 900;
+    font-size: 1.4rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .logo-dot {
+    width: 10px;
+    height: 10px;
+    background: var(--accent);
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+  }
+
+  .header-meta {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--muted);
+    text-align: right;
+    line-height: 1.6;
+  }
+
+  .live-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(0, 212, 170, 0.1);
+    border: 1px solid rgba(0, 212, 170, 0.3);
+    color: var(--green);
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    padding: 3px 8px;
+    border-radius: 2px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .live-badge::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    background: var(--green);
+    border-radius: 50%;
+    animation: pulse 1.5s infinite;
+  }
+
+  /* Layout */
+  .container {
+    max-width: 1600px;
+    margin: 0 auto;
+    padding: 2rem;
+  }
+
+  /* Hero Stats */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    margin-bottom: 2rem;
+    animation: fadeUp 0.5s ease both;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .stat-card {
+    background: var(--surface);
+    padding: 1.5rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .stat-card::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+  }
+
+  .stat-card.accent::after { background: var(--accent); }
+  .stat-card.yellow::after { background: var(--yellow); }
+  .stat-card.green::after { background: var(--green); }
+  .stat-card.blue::after { background: var(--blue); }
+  .stat-card.red::after { background: var(--red); }
+
+  .stat-label {
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    margin-bottom: 0.75rem;
+  }
+
+  .stat-value {
+    font-family: var(--cond);
+    font-weight: 900;
+    font-size: 2.8rem;
+    line-height: 1;
+    color: var(--text);
+  }
+
+  .stat-sub {
+    font-family: var(--sans);
+    font-size: 0.7rem;
+    color: var(--muted);
+    margin-top: 0.4rem;
+    font-weight: 300;
+  }
+
+  /* Controls row */
+  .controls {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    align-items: center;
+    animation: fadeUp 0.5s 0.1s ease both;
+  }
+
+  .search-box {
+    flex: 1;
+    min-width: 220px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    padding: 0.65rem 1rem;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .search-box::placeholder { color: var(--muted); }
+  .search-box:focus { border-color: var(--accent); }
+
+  select.filter-select {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    padding: 0.65rem 1rem;
+    outline: none;
+    cursor: pointer;
+    transition: border-color 0.2s;
+    appearance: none;
+    -webkit-appearance: none;
+    padding-right: 2rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%235a6280'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+  }
+
+  select.filter-select:focus { border-color: var(--accent); }
+
+  .btn {
+    background: var(--accent);
+    color: white;
+    border: none;
+    font-family: var(--cond);
+    font-weight: 700;
+    font-size: 0.8rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 0.65rem 1.5rem;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+  }
+
+  .btn:hover { background: #ff6b3d; }
+  .btn:active { transform: scale(0.98); }
+
+  .btn-outline {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-family: var(--cond);
+    font-weight: 500;
+    font-size: 0.8rem;
+    letter-spacing: 0.05em;
+    padding: 0.65rem 1.2rem;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* Results count */
+  .results-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.75rem;
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--muted);
+  }
+
+  .results-count strong { color: var(--accent); }
+
+  /* Table */
+  .table-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    overflow-x: auto;
+    animation: fadeUp 0.5s 0.2s ease both;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.78rem;
+  }
+
+  thead tr {
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+  }
+
+  th {
+    font-family: var(--mono);
+    font-size: 0.58rem;
+    font-weight: 400;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    padding: 0.85rem 1rem;
+    text-align: left;
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+    transition: color 0.15s;
+  }
+
+  th:hover { color: var(--text); }
+  th.sort-asc::after { content: ' ↑'; color: var(--accent); }
+  th.sort-desc::after { content: ' ↓'; color: var(--accent); }
+
+  tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background 0.1s;
+    cursor: pointer;
+  }
+
+  tbody tr:hover { background: var(--surface2); }
+  tbody tr:last-child { border-bottom: none; }
+
+  td {
+    padding: 0.85rem 1rem;
+    vertical-align: middle;
+    color: var(--text);
+    white-space: nowrap;
+  }
+
+  .biz-name {
+    font-weight: 500;
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .category-tag {
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .phone-cell {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--blue);
+  }
+
+  .website-cell a {
+    color: var(--green);
+    text-decoration: none;
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    max-width: 140px;
+    display: inline-block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .website-cell a:hover { text-decoration: underline; }
+
+  .no-site {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--accent);
+    background: rgba(255, 77, 28, 0.08);
+    border: 1px solid rgba(255, 77, 28, 0.2);
+    padding: 2px 6px;
+    border-radius: 2px;
+  }
+
+  /* Score bar */
+  .score-cell {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .score-num {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    font-weight: 700;
+    min-width: 28px;
+    text-align: right;
+  }
+
+  .score-bar-bg {
+    width: 60px;
+    height: 4px;
+    background: var(--dim);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .score-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.4s ease;
+  }
+
+  /* Rating */
+  .rating-cell {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+  }
+
+  .rating-low { color: var(--red); }
+  .rating-mid { color: var(--yellow); }
+  .rating-good { color: var(--green); }
+
+  /* Review count */
+  .reviews-low { color: var(--yellow); font-family: var(--mono); font-size: 0.72rem; }
+  .reviews-ok { color: var(--muted); font-family: var(--mono); font-size: 0.72rem; }
+
+  /* Flags */
+  .flags-cell {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    max-width: 260px;
+  }
+
+  .flag {
+    font-family: var(--mono);
+    font-size: 0.55rem;
+    padding: 2px 5px;
+    border-radius: 2px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+  }
+
+  .flag-red { background: rgba(255,59,59,0.1); color: var(--red); border: 1px solid rgba(255,59,59,0.2); }
+  .flag-yellow { background: rgba(255,184,0,0.1); color: var(--yellow); border: 1px solid rgba(255,184,0,0.2); }
+  .flag-blue { background: rgba(74,158,255,0.1); color: var(--blue); border: 1px solid rgba(74,158,255,0.2); }
+  .flag-muted { background: rgba(90,98,128,0.1); color: var(--muted); border: 1px solid rgba(90,98,128,0.2); }
+
+  /* Source badge */
+  .source-badge {
+    font-family: var(--mono);
+    font-size: 0.58rem;
+    color: var(--muted);
+    background: var(--dim);
+    padding: 2px 6px;
+    border-radius: 2px;
+    white-space: nowrap;
+  }
+
+  /* Modal */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.8);
+    z-index: 200;
+    backdrop-filter: blur(4px);
+  }
+
+  .modal-overlay.open { display: flex; align-items: center; justify-content: center; }
+
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    width: 700px;
+    max-width: 95vw;
+    max-height: 85vh;
+    overflow-y: auto;
+    position: relative;
+    animation: slideIn 0.2s ease;
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: scale(0.96) translateY(10px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+  }
+
+  .modal-header {
+    padding: 1.5rem 1.5rem 1rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+
+  .modal-title {
+    font-family: var(--cond);
+    font-weight: 900;
+    font-size: 1.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .modal-close {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 1.2rem;
+    padding: 0 0.25rem;
+    transition: color 0.15s;
+  }
+  .modal-close:hover { color: var(--text); }
+
+  .modal-body { padding: 1.5rem; }
+
+  .modal-section-title {
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--muted);
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .detail-item label {
+    font-family: var(--mono);
+    font-size: 0.58rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    display: block;
+    margin-bottom: 0.25rem;
+  }
+
+  .detail-item .val {
+    font-size: 0.85rem;
+    color: var(--text);
+  }
+
+  .audit-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .audit-check {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    padding: 0.6rem 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .audit-check .check-icon {
+    font-size: 0.75rem;
+  }
+
+  .audit-check .check-label {
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .pass { color: var(--green); }
+  .fail { color: var(--red); }
+
+  .notes-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    padding: 1rem;
+    font-size: 0.78rem;
+    color: var(--text);
+    line-height: 1.7;
+    font-style: italic;
+    margin-bottom: 1rem;
+  }
+
+  .big-score {
+    font-family: var(--cond);
+    font-weight: 900;
+    font-size: 4rem;
+    line-height: 1;
+  }
+
+  /* Empty state */
+  .empty-state {
+    text-align: center;
+    padding: 4rem;
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 0.75rem;
+  }
+
+  /* Pagination */
+  .pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 1.5rem;
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    animation: fadeUp 0.5s 0.3s ease both;
+  }
+
+  .page-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 0.4rem 0.8rem;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .page-btn:hover, .page-btn.active {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* Sidebar / charts */
+  .layout-split {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+  }
+
+  .side-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    animation: fadeUp 0.5s 0.25s ease both;
+  }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 1.25rem;
+  }
+
+  .panel-title {
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    margin-bottom: 1rem;
+    padding-bottom: 0.6rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* Mini bar chart */
+  .mini-bar-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 0.6rem;
+  }
+
+  .mini-bar-label {
+    font-family: var(--mono);
+    font-size: 0.58rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    min-width: 80px;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+
+  .mini-bar-track {
+    flex: 1;
+    height: 6px;
+    background: var(--dim);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .mini-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    background: var(--accent);
+  }
+
+  .mini-bar-count {
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    color: var(--text);
+    min-width: 24px;
+    text-align: right;
+  }
+
+  /* Flag breakdown */
+  .flag-breakdown-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.4rem 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.72rem;
+  }
+
+  .flag-breakdown-row:last-child { border-bottom: none; }
+  .flag-name { color: var(--muted); font-size: 0.68rem; }
+  .flag-pct { font-family: var(--mono); font-size: 0.68rem; color: var(--accent); }
+
+  /* Export banner */
+  .export-bar {
+    background: linear-gradient(90deg, rgba(255,77,28,0.08), transparent);
+    border: 1px solid rgba(255,77,28,0.2);
+    padding: 1rem 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+    animation: fadeUp 0.5s 0.15s ease both;
+  }
+
+  .export-text {
+    font-family: var(--cond);
+    font-size: 1rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .export-sub {
+    font-size: 0.72rem;
+    color: var(--muted);
+    margin-top: 0.2rem;
+    font-weight: 300;
+  }
+
+  .btn-export {
+    background: var(--accent);
+    color: white;
+    border: none;
+    font-family: var(--cond);
+    font-weight: 700;
+    font-size: 0.8rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 0.65rem 1.5rem;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s;
+  }
+
+  .btn-export:hover { background: #ff6b3d; }
+
+  /* Responsive */
+  @media (max-width: 1100px) {
+    .stats-grid { grid-template-columns: repeat(3, 1fr); }
+    .layout-split { grid-template-columns: 1fr; }
+  }
+
+  @media (max-width: 700px) {
+    .stats-grid { grid-template-columns: 1fr 1fr; }
+    .container { padding: 1rem; }
+    .modal-title { font-size: 1.1rem; }
+    .detail-grid { grid-template-columns: 1fr; }
+    .audit-grid { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-dot"></div>
+    SA Lead Engine
+  </div>
+  <div style="display:flex;align-items:center;gap:1rem;">
+    <span class="live-badge">Live Data</span>
+    <div class="header-meta">
+      <div id="last-updated">Loading...</div>
+      <div>San Antonio, Texas</div>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- Stats -->
+  <div class="stats-grid" id="stats-grid">
+    <div class="stat-card accent">
+      <div class="stat-label">Total Scraped</div>
+      <div class="stat-value" id="stat-total">—</div>
+      <div class="stat-sub">across all sources</div>
+    </div>
+    <div class="stat-card green">
+      <div class="stat-label">Qualified Leads</div>
+      <div class="stat-value" id="stat-qualified">—</div>
+      <div class="stat-sub">passed filter criteria</div>
+    </div>
+    <div class="stat-card red">
+      <div class="stat-label">No Website</div>
+      <div class="stat-value" id="stat-nosite">—</div>
+      <div class="stat-sub">missing web presence</div>
+    </div>
+    <div class="stat-card yellow">
+      <div class="stat-label">Avg Lead Score</div>
+      <div class="stat-value" id="stat-avgscore">—</div>
+      <div class="stat-sub">out of 100</div>
+    </div>
+    <div class="stat-card blue">
+      <div class="stat-label">No Ads Running</div>
+      <div class="stat-value" id="stat-noads">—</div>
+      <div class="stat-sub">missing paid presence</div>
+    </div>
+  </div>
+
+  <!-- Export banner -->
+  <div class="export-bar">
+    <div>
+      <div class="export-text">Export to GoHighLevel CRM</div>
+      <div class="export-sub">Download CSV with auto-generated notes and lead scores</div>
+    </div>
+    <button class="btn-export" onclick="exportCSV()">⬇ Export GHL CSV</button>
+  </div>
+
+  <!-- Controls -->
+  <div class="controls">
+    <input class="search-box" type="text" id="search" placeholder="Search business name, phone, category..." oninput="applyFilters()" />
+    <select class="filter-select" id="filter-cat" onchange="applyFilters()">
+      <option value="">All Categories</option>
+    </select>
+    <select class="filter-select" id="filter-source" onchange="applyFilters()">
+      <option value="">All Sources</option>
+      <option value="Google Maps">Google Maps</option>
+      <option value="Yelp">Yelp</option>
+      <option value="YellowPages">YellowPages</option>
+    </select>
+    <select class="filter-select" id="filter-flag" onchange="applyFilters()">
+      <option value="">All Flags</option>
+      <option value="No website">No Website</option>
+      <option value="Low rating">Low Rating</option>
+      <option value="Low reviews">Low Reviews</option>
+      <option value="No ads detected">No Ads</option>
+      <option value="Weak SEO signals">Weak SEO</option>
+    </select>
+    <select class="filter-select" id="filter-minscore" onchange="applyFilters()">
+      <option value="0">Min Score: Any</option>
+      <option value="50">Min Score: 50+</option>
+      <option value="60">Min Score: 60+</option>
+      <option value="70">Min Score: 70+</option>
+      <option value="80">Min Score: 80+</option>
+    </select>
+    <button class="btn-outline" onclick="resetFilters()">Reset</button>
+  </div>
+
+  <!-- Layout -->
+  <div class="layout-split">
+    <!-- Main table -->
+    <div>
+      <div class="results-bar">
+        <span>Showing <strong id="result-count">0</strong> leads</span>
+        <span id="page-info" style="font-family:var(--mono);font-size:0.65rem;color:var(--muted)"></span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th onclick="sortBy('business_name')">Business</th>
+              <th onclick="sortBy('phone')">Phone</th>
+              <th onclick="sortBy('website')">Website</th>
+              <th onclick="sortBy('rating')">Rating</th>
+              <th onclick="sortBy('review_count')">Reviews</th>
+              <th onclick="sortBy('score')">Score</th>
+              <th>Flags</th>
+              <th onclick="sortBy('source')">Source</th>
+            </tr>
+          </thead>
+          <tbody id="leads-tbody">
+            <tr><td colspan="8" class="empty-state">Loading leads...</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="pagination" id="pagination"></div>
+    </div>
+
+    <!-- Side panel -->
+    <div class="side-panel">
+
+      <div class="panel">
+        <div class="panel-title">Leads by Category</div>
+        <div id="cat-chart"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">Top Flag Distribution</div>
+        <div id="flag-chart"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">Score Distribution</div>
+        <div id="score-dist"></div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<!-- Detail Modal -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+  <div class="modal" id="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="modal-name">—</div>
+        <div style="font-family:var(--mono);font-size:0.6rem;color:var(--muted);margin-top:4px" id="modal-cat">—</div>
+      </div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<script>
+let allLeads = [];
+let filtered = [];
+let sortKey = 'score';
+let sortDir = -1;
+let page = 1;
+const PAGE_SIZE = 25;
+
+// ── Load data ────────────────────────────────────────────────────────────────
+async function loadData() {
+  try {
+    const res = await fetch('leads.json');
+    const data = await res.json();
+    allLeads = data.leads || [];
+
+    // Stats
+    document.getElementById('stat-total').textContent = data.total || allLeads.length;
+    document.getElementById('stat-qualified').textContent = data.qualified || allLeads.length;
+    document.getElementById('stat-nosite').textContent = allLeads.filter(l => !l.website).length;
+    const avg = allLeads.reduce((s, l) => s + (l.score || 0), 0) / (allLeads.length || 1);
+    document.getElementById('stat-avgscore').textContent = Math.round(avg);
+    document.getElementById('stat-noads').textContent = allLeads.filter(l => !l.ads_presence).length;
+
+    const ts = new Date(data.fetched_at);
+    document.getElementById('last-updated').textContent = 'Updated: ' + ts.toLocaleString();
+
+    // Populate category filter
+    const cats = [...new Set(allLeads.map(l => l.category))].sort();
+    const catSel = document.getElementById('filter-cat');
+    cats.forEach(c => {
+      const o = document.createElement('option');
+      o.value = c; o.textContent = c;
+      catSel.appendChild(o);
+    });
+
+    buildSideCharts(allLeads);
+    applyFilters();
+  } catch(e) {
+    console.error(e);
+    document.getElementById('leads-tbody').innerHTML = 
+      '<tr><td colspan="8" class="empty-state">Error loading leads.json — run the scraper first.</td></tr>';
+  }
+}
+
+// ── Filter + Sort ────────────────────────────────────────────────────────────
+function applyFilters() {
+  const q = document.getElementById('search').value.toLowerCase();
+  const cat = document.getElementById('filter-cat').value;
+  const src = document.getElementById('filter-source').value;
+  const flag = document.getElementById('filter-flag').value;
+  const minScore = parseInt(document.getElementById('filter-minscore').value) || 0;
+
+  filtered = allLeads.filter(l => {
+    if (q && !(
+      (l.business_name||'').toLowerCase().includes(q) ||
+      (l.phone||'').includes(q) ||
+      (l.category||'').toLowerCase().includes(q) ||
+      (l.zip||'').includes(q)
+    )) return false;
+    if (cat && l.category !== cat) return false;
+    if (src && l.source !== src) return false;
+    if (flag && !(l.flags||[]).some(f => f.includes(flag))) return false;
+    if ((l.score||0) < minScore) return false;
+    return true;
+  });
+
+  // Sort
+  filtered.sort((a, b) => {
+    let av = a[sortKey] ?? '', bv = b[sortKey] ?? '';
+    if (typeof av === 'string') av = av.toLowerCase();
+    if (typeof bv === 'string') bv = bv.toLowerCase();
+    return av < bv ? sortDir : av > bv ? -sortDir : 0;
+  });
+
+  page = 1;
+  document.getElementById('result-count').textContent = filtered.length;
+  renderTable();
+  renderPagination();
+}
+
+function resetFilters() {
+  document.getElementById('search').value = '';
+  document.getElementById('filter-cat').value = '';
+  document.getElementById('filter-source').value = '';
+  document.getElementById('filter-flag').value = '';
+  document.getElementById('filter-minscore').value = '0';
+  applyFilters();
+}
+
+function sortBy(key) {
+  if (sortKey === key) sortDir *= -1;
+  else { sortKey = key; sortDir = -1; }
+  document.querySelectorAll('th').forEach(th => {
+    th.classList.remove('sort-asc', 'sort-desc');
+  });
+  applyFilters();
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function scoreColor(s) {
+  if (s >= 70) return '#ff4d1c';
+  if (s >= 50) return '#ffb800';
+  return '#4a9eff';
+}
+
+function ratingClass(r) {
+  if (!r || r === 0) return 'rating-low';
+  if (r < 4.0) return 'rating-low';
+  if (r < 4.4) return 'rating-mid';
+  return 'rating-good';
+}
+
+function flagClass(f) {
+  if (f.includes('website') || f.includes('No website')) return 'flag-red';
+  if (f.includes('rating') || f.includes('SEO') || f.includes('ads')) return 'flag-yellow';
+  if (f.includes('competition') || f.includes('Outdated')) return 'flag-blue';
+  return 'flag-muted';
+}
+
+function renderTable() {
+  const tbody = document.getElementById('leads-tbody');
+  const start = (page - 1) * PAGE_SIZE;
+  const slice = filtered.slice(start, start + PAGE_SIZE);
+
+  if (!slice.length) {
+    tbody.innerHTML = '<tr><td colspan="8" class="empty-state">No leads match current filters.</td></tr>';
+    return;
+  }
+
+  const pageTotal = Math.ceil(filtered.length / PAGE_SIZE);
+  document.getElementById('page-info').textContent = `Page ${page} of ${pageTotal}`;
+
+  tbody.innerHTML = slice.map((l, i) => {
+    const score = l.score || 30;
+    const sc = scoreColor(score);
+    const websiteCell = l.website
+      ? `<a href="${l.website}" target="_blank" rel="noopener">${l.website.replace(/^https?:\/\/(www\.)?/, '').slice(0,22)}${l.website.length > 30 ? '…' : ''}</a>`
+      : `<span class="no-site">No Website</span>`;
+
+    const flagsHtml = (l.flags || []).slice(0,3).map(f =>
+      `<span class="flag ${flagClass(f)}">${f}</span>`
+    ).join('');
+
+    const ratingDisp = l.rating && l.rating > 0
+      ? `<span class="${ratingClass(l.rating)}">★ ${l.rating.toFixed(1)}</span>`
+      : `<span class="rating-low">—</span>`;
+
+    const reviewsDisp = l.review_count < 50
+      ? `<span class="reviews-low">${l.review_count}</span>`
+      : `<span class="reviews-ok">${l.review_count}</span>`;
+
+    return `<tr onclick="openModal(${start + i})">
+      <td>
+        <div class="biz-name">${l.business_name || '—'}</div>
+        <div class="category-tag">${(l.category||'').slice(0,20)}</div>
+      </td>
+      <td class="phone-cell">${l.phone || '—'}</td>
+      <td class="website-cell">${websiteCell}</td>
+      <td>${ratingDisp}</td>
+      <td>${reviewsDisp}</td>
+      <td>
+        <div class="score-cell">
+          <span class="score-num" style="color:${sc}">${score}</span>
+          <div class="score-bar-bg">
+            <div class="score-bar-fill" style="width:${score}%;background:${sc}"></div>
+          </div>
+        </div>
+      </td>
+      <td><div class="flags-cell">${flagsHtml}</div></td>
+      <td><span class="source-badge">${l.source||'—'}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderPagination() {
+  const total = Math.ceil(filtered.length / PAGE_SIZE);
+  const pg = document.getElementById('pagination');
+  if (total <= 1) { pg.innerHTML = ''; return; }
+
+  let html = '';
+  if (page > 1) html += `<button class="page-btn" onclick="goPage(${page-1})">‹ Prev</button>`;
+
+  const range = [];
+  for (let i = Math.max(1, page-2); i <= Math.min(total, page+2); i++) range.push(i);
+  range.forEach(p => {
+    html += `<button class="page-btn ${p===page?'active':''}" onclick="goPage(${p})">${p}</button>`;
+  });
+
+  if (page < total) html += `<button class="page-btn" onclick="goPage(${page+1})">Next ›</button>`;
+  pg.innerHTML = html;
+}
+
+function goPage(p) {
+  page = p;
+  renderTable();
+  renderPagination();
+  window.scrollTo({top: 300, behavior: 'smooth'});
+}
+
+// ── Side Charts ────────────────────────────────────────────────────────────────
+function buildSideCharts(leads) {
+  // Category chart
+  const catCounts = {};
+  leads.forEach(l => { catCounts[l.category] = (catCounts[l.category] || 0) + 1; });
+  const sortedCats = Object.entries(catCounts).sort((a,b) => b[1]-a[1]).slice(0,8);
+  const maxCat = sortedCats[0]?.[1] || 1;
+  document.getElementById('cat-chart').innerHTML = sortedCats.map(([cat, count]) => `
+    <div class="mini-bar-row">
+      <div class="mini-bar-label" title="${cat}">${cat.replace(' Contractor','').replace(' Company','').replace(' Service','')}</div>
+      <div class="mini-bar-track"><div class="mini-bar-fill" style="width:${(count/maxCat*100).toFixed(0)}%"></div></div>
+      <div class="mini-bar-count">${count}</div>
+    </div>
+  `).join('');
+
+  // Flag chart
+  const flagCounts = {};
+  leads.forEach(l => (l.flags||[]).forEach(f => { flagCounts[f] = (flagCounts[f]||0)+1; }));
+  const sortedFlags = Object.entries(flagCounts).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  document.getElementById('flag-chart').innerHTML = sortedFlags.map(([flag, count]) => `
+    <div class="flag-breakdown-row">
+      <span class="flag-name">${flag}</span>
+      <span class="flag-pct">${Math.round(count/leads.length*100)}%</span>
+    </div>
+  `).join('');
+
+  // Score distribution
+  const bands = {'30–49': 0, '50–64': 0, '65–79': 0, '80–100': 0};
+  leads.forEach(l => {
+    const s = l.score || 0;
+    if (s < 50) bands['30–49']++;
+    else if (s < 65) bands['50–64']++;
+    else if (s < 80) bands['65–79']++;
+    else bands['80–100']++;
+  });
+  const maxBand = Math.max(...Object.values(bands));
+  const colors = {'30–49': '#4a9eff', '50–64': '#ffb800', '65–79': '#ff8c42', '80–100': '#ff4d1c'};
+  document.getElementById('score-dist').innerHTML = Object.entries(bands).map(([range, count]) => `
+    <div class="mini-bar-row">
+      <div class="mini-bar-label">${range}</div>
+      <div class="mini-bar-track"><div class="mini-bar-fill" style="width:${(count/maxBand*100).toFixed(0)}%;background:${colors[range]}"></div></div>
+      <div class="mini-bar-count">${count}</div>
+    </div>
+  `).join('');
+}
+
+// ── Modal ─────────────────────────────────────────────────────────────────────
+function openModal(idx) {
+  const l = filtered[idx];
+  if (!l) return;
+
+  document.getElementById('modal-name').textContent = l.business_name || '—';
+  document.getElementById('modal-cat').textContent = (l.category || '') + ' · ' + (l.source || '');
+
+  const sc = scoreColor(l.score || 30);
+  const audit = l.website_audit || {};
+
+  const checks = [
+    ['Title Tag', audit.has_title],
+    ['Meta Desc', audit.has_meta_description],
+    ['H1 Tag', audit.has_h1],
+    ['Mobile', audit.mobile_friendly],
+    ['HTTPS', audit.https],
+    ['Canonical', audit.canonical],
+    ['OG Tags', audit.og_tags],
+    ['GA / GTM', audit.has_google_analytics || audit.has_gtm],
+    ['Meta Pixel', audit.has_meta_pixel],
+  ];
+
+  const auditHtml = l.website ? checks.map(([label, pass]) => `
+    <div class="audit-check">
+      <span class="check-icon ${pass ? 'pass' : 'fail'}">${pass ? '✓' : '✗'}</span>
+      <span class="check-label">${label}</span>
+    </div>
+  `).join('') : '<div style="color:var(--accent);font-family:var(--mono);font-size:0.7rem;grid-column:1/-1">No website found — direct outreach opportunity</div>';
+
+  const flagsHtml = (l.flags || []).map(f =>
+    `<span class="flag ${flagClass(f)}" style="font-size:0.65rem;padding:3px 7px">${f}</span>`
+  ).join(' ');
+
+  document.getElementById('modal-body').innerHTML = `
+    <div style="display:flex;gap:2rem;align-items:flex-start;margin-bottom:1.5rem">
+      <div>
+        <div style="font-family:var(--mono);font-size:0.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px">Lead Score</div>
+        <div class="big-score" style="color:${sc}">${l.score || 30}</div>
+        <div style="font-size:0.65rem;color:var(--muted);margin-top:4px">out of 100</div>
+      </div>
+      <div style="flex:1">
+        <div style="font-family:var(--mono);font-size:0.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">Flags</div>
+        <div style="display:flex;gap:5px;flex-wrap:wrap">${flagsHtml}</div>
+      </div>
+    </div>
+
+    <div class="modal-section-title">Contact Details</div>
+    <div class="detail-grid">
+      <div class="detail-item"><label>Phone</label><div class="val" style="color:var(--blue);font-family:var(--mono)">${l.phone || '—'}</div></div>
+      <div class="detail-item"><label>Email</label><div class="val">${l.email || '—'}</div></div>
+      <div class="detail-item"><label>Website</label><div class="val">${l.website ? `<a href="${l.website}" target="_blank" style="color:var(--green);font-size:0.78rem">${l.website}</a>` : '<span style="color:var(--accent)">None</span>'}</div></div>
+      <div class="detail-item"><label>Google Maps</label><div class="val">${l.google_maps_url ? `<a href="${l.google_maps_url}" target="_blank" style="color:var(--blue);font-size:0.75rem">View on Maps ↗</a>` : '—'}</div></div>
+      <div class="detail-item"><label>City / State / Zip</label><div class="val">${l.city || ''}, ${l.state || ''} ${l.zip || ''}</div></div>
+      <div class="detail-item"><label>CMS</label><div class="val" style="font-family:var(--mono);font-size:0.75rem">${audit.cms || 'Unknown'}</div></div>
+    </div>
+
+    <div class="modal-section-title">Performance Metrics</div>
+    <div class="detail-grid" style="margin-bottom:1rem">
+      <div class="detail-item"><label>Rating</label><div class="val ${ratingClass(l.rating)}" style="font-size:1.1rem;font-weight:600">★ ${l.rating || '—'}</div></div>
+      <div class="detail-item"><label>Review Count</label><div class="val" style="font-family:var(--mono)">${l.review_count ?? '—'}</div></div>
+      <div class="detail-item"><label>SEO Score</label><div class="val" style="font-family:var(--mono)">${l.seo_score ?? 0} / 100</div></div>
+      <div class="detail-item"><label>Page Load</label><div class="val" style="font-family:var(--mono)">${audit.load_time_ms ? audit.load_time_ms + ' ms' : '—'}</div></div>
+    </div>
+
+    <div class="modal-section-title">Website Audit</div>
+    <div class="audit-grid" style="margin-bottom:1.5rem">${auditHtml}</div>
+
+    <div class="modal-section-title">AI-Generated Sales Notes</div>
+    <div class="notes-box">${l.notes || 'No notes generated.'}</div>
+
+    <div style="display:flex;gap:0.75rem;margin-top:1rem">
+      ${l.phone ? `<button class="btn" onclick="window.open('tel:${l.phone.replace(/\D/g,'')}')">📞 Call</button>` : ''}
+      ${l.google_maps_url ? `<button class="btn-outline" onclick="window.open('${l.google_maps_url}','_blank')">🗺 Maps</button>` : ''}
+      <button class="btn-outline" onclick="copyLead(${JSON.stringify(l).replace(/"/g,'&quot;')})">📋 Copy</button>
+    </div>
+  `;
+
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function closeModal(e) {
+  if (!e || e.target === document.getElementById('modal-overlay')) {
+    document.getElementById('modal-overlay').classList.remove('open');
+  }
+}
+
+function ratingClass(r) {
+  if (!r || r === 0) return 'rating-low';
+  if (r < 4.0) return 'rating-low';
+  if (r < 4.4) return 'rating-mid';
+  return 'rating-good';
+}
+
+function copyLead(l) {
+  const text = `Business: ${l.business_name}\nPhone: ${l.phone}\nWebsite: ${l.website||'None'}\nScore: ${l.score}\nNotes: ${l.notes}`;
+  navigator.clipboard.writeText(text).then(() => alert('Copied to clipboard!'));
+}
+
+// ── Export CSV ────────────────────────────────────────────────────────────────
+function exportCSV() {
+  const rows = [
+    ['Business Name','Contact Name','Phone','Email','Website','City','State','Zip','Lead Score','Flags','Notes','Source URL']
+  ];
+  filtered.forEach(l => {
+    rows.push([
+      `"${(l.business_name||'').replace(/"/g,"'")}"`,
+      '',
+      `"${l.phone||''}"`,
+      `"${l.email||''}"`,
+      `"${l.website||''}"`,
+      `"${l.city||''}"`,
+      `"${l.state||''}"`,
+      `"${l.zip||''}"`,
+      l.score||30,
+      `"${(l.flags||[]).join('; ')}"`,
+      `"${(l.notes||'').replace(/"/g,"'")}"`,
+      `"${l.google_maps_url||l.source||''}"`,
+    ]);
+  });
+  const csv = rows.map(r => r.join(',')).join('\n');
+  const blob = new Blob([csv], {type: 'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `sa-leads-ghl-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── Keyboard nav ──────────────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeModal();
+});
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+loadData();
+</script>
+</body>
+</html>
