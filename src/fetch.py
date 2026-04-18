@@ -29,7 +29,7 @@ logging.basicConfig(
 log = logging.getLogger("lead_gen")
 
 # ── Config ────────────────────────────────────────────────────────────────────
-BASE_DIR = Path(__file__).resolve().parent
+BASE_DIR = Path(__file__).resolve().parent.parentent
 DATA_DIR = BASE_DIR / "data"
 DASHBOARD_DIR = BASE_DIR / "dashboard"
 EXPORTS_DIR = BASE_DIR / "exports"
